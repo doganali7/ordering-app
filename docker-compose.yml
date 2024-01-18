@@ -8,9 +8,8 @@ services:
     env_file:
       - ./apps/orders/.env
     depends_on:
-      - mongodb-primary
-      - mongodb-secondary
-      - mongodb-arbiter
+      mongodb-primary:
+        condition: service_healthy
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
@@ -18,19 +17,22 @@ services:
       - '3000:3000'
 
   mongodb-primary:
-    image: docker.io/bitnami/mongodb:5.0
+    image: mongo:latest
     environment:
-      - MONGODB_ADVERTISED_HOSTNAME=mongodb-primary
-      - MONGODB_REPLICA_SET_MODE=primary
-      - MONGODB_ROOT_PASSWORD=password123
-      - MONGODB_REPLICA_SET_KEY=replicasetkey123
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=password123
     volumes:
-      - 'mongodb_master_data:/bitnami/mongodb'
+      - 'mongodb_master_data:/data/db'
     ports:
       - '27017:27017'
+    healthcheck:
+      test: ['CMD', 'mongo', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
 
   mongodb-secondary:
-    image: docker.io/bitnami/mongodb:5.0
+    image: mongo:latest
     depends_on:
       - mongodb-primary
     environment:
@@ -41,7 +43,7 @@ services:
       - MONGODB_REPLICA_SET_KEY=replicasetkey123
 
   mongodb-arbiter:
-    image: docker.io/bitnami/mongodb:5.0
+    image: mongo:latest
     depends_on:
       - mongodb-primary
     environment:
